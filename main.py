@@ -17,7 +17,6 @@ import undetected_chromedriver as uc
 from selenium.webdriver.chrome.options import Options
 
 base_url = "https://www.instacart.com"
-search_url = "https://www.instacart.com/store/s?k=potato&current_zip_code=30233"
 section_id = 1
 page = 1
 products = []
@@ -25,6 +24,10 @@ product_links = []
 scraped_stores = []
 
 def get_list(driver):
+    keyword = input("Enter your keyword to search: ")
+    current_zip_code = input("Enter your current zip code": )
+    search_url = f"https://www.instacart.com/store/s?k={keyword}&current_zip_code={current_zip_code}"
+
     driver.get(search_url);
     driver.execute_script("document.body.style.zoom='50%'")
     scroll_to_bottom_multiple_times(driver, 2, 80)
@@ -96,14 +99,14 @@ def get_products(driver, stores):
             
             if(image_url):
                 try:
-                    # responseImage = requests.get(image_url)
-                    # image_type = imghdr.what(None, responseImage.content)
-                    # if responseImage.status_code == 200:
-                    #     img_url = "products/"+current_time+"/images/"+prefix+str(section_id)+'.'+image_type
-                    #     with open(img_url, 'wb') as file:
-                    #         file.write(responseImage.content)
-                    #         download_url = img_url
-                    download_url = "products/"+current_time+"/images/"+prefix+str(section_id)+'.'+"jpg"
+                    responseImage = requests.get(image_url)
+                    image_type = imghdr.what(None, responseImage.content)
+                    if responseImage.status_code == 200:
+                        img_url = "products/"+current_time+"/images/"+prefix+str(section_id)+'.'+image_type
+                        with open(img_url, 'wb') as file:
+                            file.write(responseImage.content)
+                            download_url = img_url
+                    # download_url = "products/"+current_time+"/images/"+prefix+str(section_id)+'.'+"jpg"
                 except Exception as e:
                     print(e)
             try:
