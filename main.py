@@ -122,7 +122,7 @@ def get_products(driver, stores, keyword, current_zip_code, db_name, table_name,
         driver.get(store["url"])
         driver.execute_script("document.body.style.zoom='25%'")
         scroll_to_bottom_multiple_times(driver, 2, 80)
-        time.sleep(3)
+        time.sleep(5)
         elements = driver.find_elements(By.XPATH, "//div[@aria-label='Product']")
         
         for element in elements:
