@@ -315,7 +315,7 @@ def get_products_api():
     current_zip_code = request.args.get("zip_code", "").strip()
 
     options = uc.ChromeOptions()
-    options.add_argument("--headless=new")  # Enable headless mode
+    # options.add_argument("--headless=new")  # Enable headless mode
     options.add_argument("--disable-gpu")
     options.add_argument("--no-sandbox")
     options.add_argument("--disable-dev-shm-usage")
