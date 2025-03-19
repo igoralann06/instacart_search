@@ -35,9 +35,7 @@ def get_list(driver, keyword, current_zip_code):
     for store in stores:
         try:
             driver.execute_script("arguments[0].scrollIntoView();", store)
-            header = store.find_element(By.CLASS_NAME, "e-brna74")
-            group = header.find_element(By.CLASS_NAME, "e-1obf64m")
-            link_element = group.find_element(By.CLASS_NAME, "e-8sr6ht")
+            link_element = store.find_element(By.XPATH, "//*[contains(@class, 'e-8sr6ht')]")
             link = link_element.get_dom_attribute("href")
             print(link)
 
