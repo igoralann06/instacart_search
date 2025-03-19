@@ -293,6 +293,7 @@ def get_products_api():
 
     options = uc.ChromeOptions()
     # options.add_argument("--headless=new")  # Enable headless mode
+    options.add_argument("--headless")  # Enable headless mode
     options.add_argument("--disable-gpu")
     options.add_argument("--no-sandbox")
     options.add_argument("--disable-dev-shm-usage")

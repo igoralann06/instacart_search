@@ -90,6 +90,8 @@
         }
 
         function fetchProducts() {
+            const button = document.getElementById('searchButton');
+            button.disabled = true;
             let keyword = document.getElementById("keyword").value.trim();
             let zip_code = document.getElementById("zip_code").value.trim();
 
