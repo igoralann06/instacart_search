@@ -28,10 +28,10 @@ def get_list(driver):
     current_zip_code = input("Enter your current zip code: ")
     search_url = f"https://www.instacart.com/store/s?k={keyword}&current_zip_code={current_zip_code}"
 
-    driver.get(search_url);
+    driver.get(search_url)
     driver.execute_script("document.body.style.zoom='50%'")
     scroll_to_bottom_multiple_times(driver, 2, 80)
-    time.sleep(5)
+    time.sleep(10)
     stores = driver.find_elements(By.CLASS_NAME, "e-14qbqkc")
     
     for store in stores:
