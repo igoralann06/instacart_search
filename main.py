@@ -20,7 +20,7 @@ from selenium.webdriver.chrome.options import Options
 from concurrent.futures import ThreadPoolExecutor
 import threading
 
-executor = ThreadPoolExecutor(max_workers=5)
+executor = ThreadPoolExecutor(max_workers=1)
 
 from flask import Flask, render_template, send_from_directory, request
 
