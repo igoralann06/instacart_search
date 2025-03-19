@@ -17,11 +17,6 @@ from selenium.webdriver.support import expected_conditions as EC
 import undetected_chromedriver as uc
 from selenium.webdriver.chrome.options import Options
 
-from concurrent.futures import ThreadPoolExecutor
-import threading
-
-executor = ThreadPoolExecutor(max_workers=1)
-
 from flask import Flask, render_template, send_from_directory, request
 
 base_url = "https://www.instacart.com"
@@ -296,55 +291,49 @@ def get_products_api():
     keyword = request.args.get("keyword", "").strip()
     current_zip_code = request.args.get("zip_code", "").strip()
 
-    # Function to initialize the driver and scrape data
-    def scrape_products():
-        options = uc.ChromeOptions()
-        options.add_argument("--headless")  # Enable headless mode
-        options.add_argument("--disable-gpu")
-        options.add_argument("--no-sandbox")
-        options.add_argument("--disable-dev-shm-usage")
-        options.add_argument("--disable-extensions")
-        options.add_argument("--start-maximized")  # Debugging support
-        driver = uc.Chrome(options=options)
-
-        titleData = ["id", "Store page link", "Product item page link", "Platform", "Store", "Product_description", "Product Name", "Weight/Quantity", "Units/Counts", "Price", "image_file_names", "Image_Link", "Store Rating", "Store Review number", "Product Rating", "Product Review number", "Address", "Phone number", "Latitude", "Longitude", "Description Detail"]
-        widths = [10,50,50,60,45,70,35,25,25,20,130,130,30,30,30,30,60,50,60,60,80]
-        style = xlwt.easyxf('font: bold 1; align: horiz center')
-        
-        if not os.path.isdir("products"):
-            os.mkdir("products")
-
-        now = datetime.now()
-        current_time = now.strftime("%m_%d_%Y_%H_%M_%S")
-        prefix = now.strftime("%Y%m%d%H%M%S%f_")
-        os.mkdir("products/"+current_time+"_"+keyword+"_"+current_zip_code)
-        os.mkdir("products/"+current_time+"_"+keyword+"_"+current_zip_code+"/images")
-
-        db_name = "product_data.db"
-        table_name = f"search_{current_time}_{keyword.replace(' ', '_')}"
-        
-        workbook = xlwt.Workbook()
-        sheet = workbook.add_sheet('Sheet1')
-        
-        for col_index, value in enumerate(titleData):
-            first_col = sheet.col(col_index)
-            first_col.width = 256 * widths[col_index]  # 20 characters wide
-            sheet.write(0, col_index, value, style)
-
-        create_database_table(db_name, table_name)
-        records = get_list(driver=driver, keyword=keyword, current_zip_code=current_zip_code, db_name=db_name, table_name=table_name, current_time=current_time, prefix=prefix)
-
-        for row_index, row in enumerate(records):
-            for col_index, value in enumerate(row):
-                sheet.write(row_index + 1, col_index, value)
-
-        # Save the workbook
-        workbook.save("products/"+current_time+"_"+keyword+"_"+current_zip_code+"/products.xls")
+    options = uc.ChromeOptions()
+    options.add_argument("--headless=new")  # Enable headless mode
+    options.add_argument("--disable-gpu")
+    options.add_argument("--no-sandbox")
+    options.add_argument("--disable-dev-shm-usage")
+    options.add_argument("--disable-extensions")
+    options.add_argument("--disable-software-rasterizer")
+    options.add_argument("--start-maximized")  # Debugging support
+    driver = uc.Chrome(options=options)
+    titleData = ["id","Store page link", "Product item page link", "Platform", "Store", "Product_description", "Product Name", "Weight/Quantity", "Units/Counts", "Price", "image_file_names", "Image_Link", "Store Rating", "Store Review number", "Product Rating", "Product Review number", "Address", "Phone number", "Latitude", "Longitude", "Description Detail"]
+    widths = [10,50,50,60,45,70,35,25,25,20,130,130,30,30,30,30,60,50,60,60,80]
+    style = xlwt.easyxf('font: bold 1; align: horiz center')
     
-    # Submit the scraping task to the thread pool
-    executor.submit(scrape_products)
+    if(not os.path.isdir("products")):
+        os.mkdir("products")
 
-    return "Scraping in progress! The data will be ready shortly."
+    now = datetime.now()
+    current_time = now.strftime("%m_%d_%Y_%H_%M_%S")
+    prefix = now.strftime("%Y%m%d%H%M%S%f_")
+    os.mkdir("products/"+current_time+"_"+keyword+"_"+current_zip_code)
+    os.mkdir("products/"+current_time+"_"+keyword+"_"+current_zip_code+"/images")
+
+    db_name = "product_data.db"
+    table_name = f"search_{current_time}_{keyword.replace(' ', '_')}"
+    
+    workbook = xlwt.Workbook()
+    sheet = workbook.add_sheet('Sheet1')
+    
+    for col_index, value in enumerate(titleData):
+        first_col = sheet.col(col_index)
+        first_col.width = 256 * widths[col_index]  # 20 characters wide
+        sheet.write(0, col_index, value, style)
+    
+    create_database_table(db_name, table_name)
+    records = get_list(driver=driver, keyword=keyword, current_zip_code=current_zip_code, db_name=db_name, table_name=table_name, current_time=current_time, prefix=prefix)
+        
+    for row_index, row in enumerate(records):
+        for col_index, value in enumerate(row):
+            sheet.write(row_index+1, col_index, value)
+
+    # Save the workbook
+    workbook.save("products/"+current_time+"_"+keyword+"_"+current_zip_code+"/products.xls")
+    return ""
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0', threaded=True,)
