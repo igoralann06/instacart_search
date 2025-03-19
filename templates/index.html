@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Product Listings</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 p-6">
+
+    <div class="max-w-7xl mx-auto flex flex-col md:flex-row gap-6">
+        
+        <!-- Left Side: Table List -->
+        <div class="w-full md:w-1/3 bg-white p-4 rounded-lg shadow-lg overflow-y-auto max-h-screen">
+            <h2 class="text-xl font-bold mb-4">Product Tables</h2>
+            
+            <!-- Table Search Bar -->
+            <input type="text" id="tableSearch" onkeyup="filterTable()" 
+                class="w-full px-3 py-2 border border-gray-300 rounded-lg mb-3"
+                placeholder="Search in table...">
+            
+                <ul id="tableList" class="list-none">
+                    {% for table_name in table_names %}
+                        <li class="py-2 px-3 border-b hover:bg-gray-200 cursor-pointer" 
+                            onclick="window.location.href='/products/{{ table_name }}'">
+                            {{ table_name }}
+                        </li>
+                    {% endfor %}
+                </ul>
+        </div>
+
+        <!-- Right Side: Product Grid -->
+        <div class="w-full md:w-2/3">
+            <h2 class="text-xl font-bold mb-4">Product Listings</h2>
+            
+            <div class="flex gap-2 mb-4">
+                <input type="text" id="keyword" class="px-3 py-2 border rounded-lg w-1/2" placeholder="Enter keyword...">
+                <input type="text" id="zip_code" class="px-3 py-2 border rounded-lg w-1/2" placeholder="Enter zip code...">
+                <button onclick="fetchProducts()" class="px-4 py-2 bg-blue-600 text-white rounded-lg">Search</button>
+            </div>
+        
+            <!-- Grid Search Bar -->
+            <input type="text" id="gridSearch" onkeyup="filterGrid()" 
+                class="w-full px-3 py-2 border border-gray-300 rounded-lg mb-3"
+                placeholder="Search in product list...">
+            
+            <div id="productGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                {% if products %}
+                    {% for product in products %}
+                        <div class="bg-white p-4 rounded-lg shadow-lg">
+                            <a href="{{ product[4] }}" target="_blank">
+                                <img src="/{{ product[3] }}" alt="{{ product[1] }}" class="w-full h-40 object-cover rounded-md">
+                            </a>
+                            <h2 class="text-lg font-semibold mt-2">{{ product[1] }}</h2>
+                            <p class="text-blue-600 font-bold mt-1">{{ product[2] }}</p>
+                            <p class="text-sm text-gray-600 mt-1">Store: {{ product[0] }}</p>
+                        </div>
+                    {% endfor %}
+                {% else %}
+                    <p class="text-center text-gray-600">No products available in this table.</p>
+                {% endif %}
+            </div>
+                
+        </div>
+        
+    </div>
+
+    <script>
+        // Table Search Function
+        function filterTable() {
+            let input = document.getElementById("tableSearch").value.toLowerCase();
+            let items = document.querySelectorAll("#tableList li");
+
+            items.forEach(item => {
+                let text = item.innerText.toLowerCase();
+                item.style.display = text.includes(input) ? "block" : "none";
+            });
+        }
+
+        // Product Grid Search Function
+        function filterGrid() {
+            let input = document.getElementById("gridSearch").value.toLowerCase();
+            let products = document.querySelectorAll("#productGrid > div");
+
+            products.forEach(product => {
+                let title = product.querySelector("h2").innerText.toLowerCase();
+
+                product.style.display = title.includes(input) ? "block" : "none";
+            });
+        }
+
+        function fetchProducts() {
+            let keyword = document.getElementById("keyword").value.trim();
+            let zip_code = document.getElementById("zip_code").value.trim();
+
+            if (!keyword || !zip_code) {
+                alert("Please enter both keyword and zip code.");
+                return;
+            }
+
+            fetch(`/get_products?keyword=${encodeURIComponent(keyword)}&zip_code=${encodeURIComponent(zip_code)}`)
+            .then(response => response.json())
+            .then(data => {
+            })
+        }
+    </script>
+
+</body>
+</html>

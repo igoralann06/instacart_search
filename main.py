@@ -3,6 +3,7 @@ import xlwt
 from datetime import datetime, timedelta
 import os
 import imghdr
+import sqlite3
 
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
@@ -16,6 +17,8 @@ from selenium.webdriver.support import expected_conditions as EC
 import undetected_chromedriver as uc
 from selenium.webdriver.chrome.options import Options
 
+from flask import Flask, render_template, send_from_directory, request
+
 base_url = "https://www.instacart.com"
 section_id = 1
 page = 1
@@ -23,19 +26,67 @@ products = []
 product_links = []
 scraped_stores = []
 
-def get_list(driver, keyword, current_zip_code):
+app = Flask(__name__)
+
+def create_database_table(db_name, table_name):
+    conn = sqlite3.connect(db_name)
+    cursor = conn.cursor()
+
+    print(table_name)
+
+    create_table_query = f"""
+    CREATE TABLE IF NOT EXISTS {table_name} (
+        id INTEGER PRIMARY KEY,
+        store_page_link TEXT,
+        product_item_page_link TEXT,
+        platform TEXT,
+        store TEXT,
+        product_name TEXT,
+        weight_quantity TEXT,
+        price TEXT,
+        image_file_name TEXT,
+        image_link TEXT,
+        product_rating TEXT,
+        product_review_number TEXT,
+        address TEXT,
+        phone_number TEXT,
+        latitude TEXT,
+        longitude TEXT
+    );
+    """
+    cursor.execute(create_table_query)
+    conn.commit()
+    conn.close()
+
+def insert_product_record(db_name, table_name, record):
+    conn = sqlite3.connect(db_name)
+    cursor = conn.cursor()
+    
+    insert_query = f"""
+    INSERT INTO {table_name} (store_page_link, product_item_page_link, platform, store, product_name,
+        weight_quantity, price, image_file_name, image_link, product_rating, product_review_number,
+        address, phone_number, latitude, longitude)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    """
+    
+    cursor.execute(insert_query, record)
+    conn.commit()
+    conn.close()
+
+def get_list(driver, keyword, current_zip_code, db_name, table_name, current_time, prefix):
     search_url = f"https://www.instacart.com/store/s?k={keyword}&current_zip_code={current_zip_code}"
 
     driver.get(search_url)
     driver.execute_script("document.body.style.zoom='50%'")
     scroll_to_bottom_multiple_times(driver, 2, 80)
-    time.sleep(10)
+    time.sleep(5)
     stores = driver.find_elements(By.CLASS_NAME, "e-14qbqkc")
     
     for store in stores:
         try:
             driver.execute_script("arguments[0].scrollIntoView();", store)
-            link_element = store.find_element(By.XPATH, ".//a[contains(@class, 'e-8sr6ht')]")
+            link_element = store.find_element(By.XPATH, ".//a[contains(@class, 'e-8sr6ht') or contains(@class, 'e-h91tqw')]")
+
             link = link_element.get_dom_attribute("href")
             print(link)
 
@@ -46,7 +97,7 @@ def get_list(driver, keyword, current_zip_code):
             scraped_stores.append({"url": f"{base_url}{link}", "title": store_title})
         except:
             print("Error")
-    products = get_products(driver, scraped_stores, keyword, current_zip_code)
+    products = get_products(driver, scraped_stores, keyword, current_zip_code, db_name, table_name, current_time, prefix)
     return products
 
 def scroll_to_bottom_multiple_times(driver, scroll_pause_time=2, max_scrolls=10):
@@ -65,15 +116,15 @@ def scroll_to_bottom_multiple_times(driver, scroll_pause_time=2, max_scrolls=10)
         last_height = new_height
         scroll_count += 1
 
-def get_products(driver, stores, keyword, current_zip_code):
+def get_products(driver, stores, keyword, current_zip_code, db_name, table_name, current_time, prefix):
     global section_id
     for store in stores:
         driver.get(store["url"])
         driver.execute_script("document.body.style.zoom='25%'")
         scroll_to_bottom_multiple_times(driver, 2, 80)
-        time.sleep(5)
+        time.sleep(3)
         elements = driver.find_elements(By.XPATH, "//div[@aria-label='Product']")
-        print(elements)
+        
         for element in elements:
 
             image_url = ""
@@ -153,6 +204,26 @@ def get_products(driver, stores, keyword, current_zip_code):
                 "122.3960",
                 "",
             ]
+
+            db_record = (
+                "https://instacart.com",
+                product_link,
+                "Instacart",
+                store["title"],
+                title,
+                weight,
+                price,
+                download_url,
+                image_url,
+                "",
+                "",
+                "50 Beale St # 600, San Francisco, California 94105, US",
+                "+18882467822",
+                "37.7914",
+                "122.3960",
+            )
+
+            insert_product_record(db_name, table_name, db_record)
             
             products.append(record)
             print(record)
@@ -160,7 +231,66 @@ def get_products(driver, stores, keyword, current_zip_code):
     
     return products
 
-if __name__ == "__main__":
+@app.route('/')
+def index():
+    db_name = "product_data.db"
+    
+    # Function to fetch table names
+    def get_table_names(db_name):
+        conn = sqlite3.connect(db_name)
+        cursor = conn.cursor()
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
+        tables = cursor.fetchall()
+        conn.close()
+        return [table[0] for table in tables]
+
+    # Fetch the table names
+    table_names = get_table_names(db_name)
+
+    # Pass the table names to the template
+    return render_template('index.html', table_names=table_names)
+
+@app.route('/products/<table_name>')
+def get_products_by_table(table_name):
+    # Connect to the database and fetch the products for the selected table
+    db_name = "product_data.db"
+
+    def get_table_names(db_name):
+        conn = sqlite3.connect(db_name)
+        cursor = conn.cursor()
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
+        tables = cursor.fetchall()
+        conn.close()
+        return [table[0] for table in tables]
+    
+    # Function to fetch product data from a specific table
+    def get_products_from_table(db_name, table_name):
+        conn = sqlite3.connect(db_name)
+        cursor = conn.cursor()
+        cursor.execute(f"""
+            SELECT store, product_name, price, image_file_name, product_item_page_link FROM {table_name}
+            WHERE price IS NOT NULL AND price != ''
+            ORDER BY CAST(REPLACE(REPLACE(price, '$', ''), ',', '') AS FLOAT) ASC
+        """)
+        products = cursor.fetchall()
+        conn.close()
+        return products
+
+    # Fetch the products for the selected table
+    products = get_products_from_table(db_name, table_name)
+
+    # Return the template with the products data
+    return render_template('index.html', table_names=get_table_names(db_name), products=products, selected_table=table_name)
+
+@app.route('/products/<path:filename>')
+def serve_products(filename):
+    return send_from_directory('products', filename)
+
+@app.route('/get_products', methods=['GET'])
+def get_products_api():
+    keyword = request.args.get("keyword", "").strip()
+    current_zip_code = request.args.get("zip_code", "").strip()
+
     options = uc.ChromeOptions()
     # options.add_argument("--headless=new")  # Enable headless mode
     options.add_argument("--disable-gpu")
@@ -177,14 +307,14 @@ if __name__ == "__main__":
     if(not os.path.isdir("products")):
         os.mkdir("products")
 
-    keyword = input("Enter your keyword to search: ")
-    current_zip_code = input("Enter your current zip code: ")
-
     now = datetime.now()
-    current_time = now.strftime("%m-%d-%Y-%H-%M-%S")
+    current_time = now.strftime("%m_%d_%Y_%H_%M_%S")
     prefix = now.strftime("%Y%m%d%H%M%S%f_")
     os.mkdir("products/"+current_time+"_"+keyword+"_"+current_zip_code)
     os.mkdir("products/"+current_time+"_"+keyword+"_"+current_zip_code+"/images")
+
+    db_name = "product_data.db"
+    table_name = f"search_{current_time}_{keyword.replace(' ', '_')}"
     
     workbook = xlwt.Workbook()
     sheet = workbook.add_sheet('Sheet1')
@@ -194,7 +324,8 @@ if __name__ == "__main__":
         first_col.width = 256 * widths[col_index]  # 20 characters wide
         sheet.write(0, col_index, value, style)
     
-    records = get_list(driver=driver, keyword=keyword, current_zip_code=current_zip_code)
+    create_database_table(db_name, table_name)
+    records = get_list(driver=driver, keyword=keyword, current_zip_code=current_zip_code, db_name=db_name, table_name=table_name, current_time=current_time, prefix=prefix)
         
     for row_index, row in enumerate(records):
         for col_index, value in enumerate(row):
@@ -202,6 +333,9 @@ if __name__ == "__main__":
 
     # Save the workbook
     workbook.save("products/"+current_time+"_"+keyword+"_"+current_zip_code+"/products.xls")
+
+if __name__ == "__main__":
+    app.run(threaded=True)
 
 
 
