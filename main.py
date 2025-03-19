@@ -203,7 +203,7 @@ if __name__ == "__main__":
             sheet.write(row_index+1, col_index, value)
 
     # Save the workbook
-    workbook.save("products/"+current_time+"/products.xls")
+    workbook.save("products/"+current_time+"_"+keyword+"_"+current_zip_code+"/products.xls")
 
 
 
