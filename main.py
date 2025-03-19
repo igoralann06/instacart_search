@@ -31,7 +31,7 @@ def get_list(driver):
     driver.get(search_url)
     driver.execute_script("document.body.style.zoom='50%'")
     scroll_to_bottom_multiple_times(driver, 2, 80)
-    time.sleep(10)
+    time.sleep(30)
     stores = driver.find_elements(By.CLASS_NAME, "e-14qbqkc")
     
     for store in stores:
