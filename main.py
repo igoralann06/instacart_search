@@ -23,9 +23,7 @@ products = []
 product_links = []
 scraped_stores = []
 
-def get_list(driver):
-    keyword = input("Enter your keyword to search: ")
-    current_zip_code = input("Enter your current zip code: ")
+def get_list(driver, keyword, current_zip_code):
     search_url = f"https://www.instacart.com/store/s?k={keyword}&current_zip_code={current_zip_code}"
 
     driver.get(search_url)
@@ -195,7 +193,9 @@ if __name__ == "__main__":
         first_col.width = 256 * widths[col_index]  # 20 characters wide
         sheet.write(0, col_index, value, style)
     
-    records = get_list(driver=driver)
+    keyword = input("Enter your keyword to search: ")
+    current_zip_code = input("Enter your current zip code: ")
+    records = get_list(driver=driver, keyword=keyword, current_zip_code=current_zip_code)
         
     for row_index, row in enumerate(records):
         for col_index, value in enumerate(row):
