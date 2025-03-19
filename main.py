@@ -25,7 +25,7 @@ scraped_stores = []
 
 def get_list(driver):
     keyword = input("Enter your keyword to search: ")
-    current_zip_code = input("Enter your current zip code": )
+    current_zip_code = input("Enter your current zip code: ")
     search_url = f"https://www.instacart.com/store/s?k={keyword}&current_zip_code={current_zip_code}"
 
     driver.get(search_url);
