@@ -48,7 +48,7 @@ def get_list(driver, keyword, current_zip_code):
             scraped_stores.append({"url": f"{base_url}{link}", "title": store_title})
         except:
             print("Error")
-    products = get_products(driver, scraped_stores)
+    products = get_products(driver, scraped_stores, keyword, current_zip_code)
     return products
 
 def scroll_to_bottom_multiple_times(driver, scroll_pause_time=2, max_scrolls=10):
@@ -67,7 +67,7 @@ def scroll_to_bottom_multiple_times(driver, scroll_pause_time=2, max_scrolls=10)
         last_height = new_height
         scroll_count += 1
 
-def get_products(driver, stores):
+def get_products(driver, stores, keyword, current_zip_code):
     global section_id
     for store in stores:
         driver.get(store["url"])
@@ -100,11 +100,11 @@ def get_products(driver, stores):
                     responseImage = requests.get(image_url)
                     image_type = imghdr.what(None, responseImage.content)
                     if responseImage.status_code == 200:
-                        img_url = "products/"+current_time+"/images/"+prefix+str(section_id)+'.'+image_type
+                        img_url = "products/"+current_time+"_"+keyword+"_"+current_zip_code+"/images/"+prefix+str(section_id)+'.'+image_type
                         with open(img_url, 'wb') as file:
                             file.write(responseImage.content)
                             download_url = img_url
-                    # download_url = "products/"+current_time+"/images/"+prefix+str(section_id)+'.'+"jpg"
+                    # download_url = "products/"+current_time+"_"+keyword+"_"+current_zip_code+"/images/"+prefix+str(section_id)+'.'+"jpg"
                 except Exception as e:
                     print(e)
             try:
@@ -179,11 +179,14 @@ if __name__ == "__main__":
     if(not os.path.isdir("products")):
         os.mkdir("products")
 
+    keyword = input("Enter your keyword to search: ")
+    current_zip_code = input("Enter your current zip code: ")
+
     now = datetime.now()
     current_time = now.strftime("%m-%d-%Y-%H-%M-%S")
     prefix = now.strftime("%Y%m%d%H%M%S%f_")
-    os.mkdir("products/"+current_time)
-    os.mkdir("products/"+current_time+"/images")
+    os.mkdir("products/"+current_time+"_"+keyword+"_"+current_zip_code)
+    os.mkdir("products/"+current_time+"_"+keyword+"_"+current_zip_code+"/images")
     
     workbook = xlwt.Workbook()
     sheet = workbook.add_sheet('Sheet1')
@@ -193,8 +196,6 @@ if __name__ == "__main__":
         first_col.width = 256 * widths[col_index]  # 20 characters wide
         sheet.write(0, col_index, value, style)
     
-    keyword = input("Enter your keyword to search: ")
-    current_zip_code = input("Enter your current zip code: ")
     records = get_list(driver=driver, keyword=keyword, current_zip_code=current_zip_code)
         
     for row_index, row in enumerate(records):
