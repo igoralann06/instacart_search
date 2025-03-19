@@ -60,6 +60,22 @@
                     <p class="text-center text-gray-600">No products available in this table.</p>
                 {% endif %}
             </div>
+
+            <div class="flex justify-center mt-4">
+                {% if page > 1 %}
+                    <a href="/products/{{ selected_table }}?page={{ page - 1 }}" 
+                        class="px-4 py-2 bg-blue-600 text-white rounded-lg mr-2">
+                        Previous
+                    </a>
+                {% endif %}
+                <span class="px-4 py-2 text-lg">{{ page }} / {{ total_pages }}</span>
+                {% if page < total_pages %}
+                    <a href="/products/{{ selected_table }}?page={{ page + 1 }}" 
+                        class="px-4 py-2 bg-blue-600 text-white rounded-lg ml-2">
+                        Next
+                    </a>
+                {% endif %}
+            </div>
                 
         </div>
         

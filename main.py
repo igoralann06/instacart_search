@@ -234,6 +234,7 @@ def get_products(driver, stores, keyword, current_zip_code, db_name, table_name,
 @app.route('/')
 def index():
     db_name = "product_data.db"
+    page = request.args.get('page', 1, type=int)
     
     # Function to fetch table names
     def get_table_names(db_name):
@@ -248,11 +249,13 @@ def index():
     table_names = get_table_names(db_name)
 
     # Pass the table names to the template
-    return render_template('index.html', table_names=table_names)
+    return render_template('index.html', table_names=table_names, page=page, total_pages=0)
 
 @app.route('/products/<table_name>')
 def get_products_by_table(table_name):
-    # Connect to the database and fetch the products for the selected table
+    # Pagination parameters
+    page = request.args.get('page', 1, type=int)
+    per_page = 12  # Number of products per page
     db_name = "product_data.db"
 
     def get_table_names(db_name):
@@ -263,24 +266,44 @@ def get_products_by_table(table_name):
         conn.close()
         return [table[0] for table in tables]
     
-    # Function to fetch product data from a specific table
-    def get_products_from_table(db_name, table_name):
+    # Function to fetch product data from a specific table with pagination
+    def get_products_from_table(db_name, table_name, page, per_page):
         conn = sqlite3.connect(db_name)
         cursor = conn.cursor()
+        offset = (page - 1) * per_page  # Calculate the offset for pagination
+        
         cursor.execute(f"""
-            SELECT store, product_name, price, image_file_name, product_item_page_link FROM {table_name}
+            SELECT store, product_name, price, image_file_name, product_item_page_link 
+            FROM {table_name}
             WHERE price IS NOT NULL AND price != ''
             ORDER BY CAST(REPLACE(REPLACE(price, '$', ''), ',', '') AS FLOAT) ASC
+            LIMIT {per_page} OFFSET {offset}
         """)
         products = cursor.fetchall()
         conn.close()
         return products
 
     # Fetch the products for the selected table
-    products = get_products_from_table(db_name, table_name)
+    products = get_products_from_table(db_name, table_name, page, per_page)
+    
+    # Fetch total number of products to calculate total pages
+    conn = sqlite3.connect(db_name)
+    cursor = conn.cursor()
+    cursor.execute(f"SELECT COUNT(*) FROM {table_name} WHERE price IS NOT NULL AND price != ''")
+    total_products = cursor.fetchone()[0]
+    conn.close()
 
-    # Return the template with the products data
-    return render_template('index.html', table_names=get_table_names(db_name), products=products, selected_table=table_name)
+    total_pages = (total_products // per_page) + (1 if total_products % per_page != 0 else 0)
+
+    # Return the template with the products and pagination info
+    return render_template(
+        'index.html', 
+        table_names=get_table_names(db_name), 
+        products=products, 
+        selected_table=table_name,
+        page=page,
+        total_pages=total_pages
+    )
 
 @app.route('/products/<path:filename>')
 def serve_products(filename):
