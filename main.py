@@ -400,7 +400,7 @@ def get_products_api():
 
     # Save the workbook
     workbook.save("products/"+current_time+"_"+keyword+"_"+current_zip_code+"/products.xls")
-    return jsonify({"response": True})
+    return jsonify({"response": records})
 
 if __name__ == "__main__":
     db_name = "product_data.db"
