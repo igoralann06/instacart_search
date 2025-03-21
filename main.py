@@ -68,14 +68,14 @@ def insert_product_record(db_name, table_name, record):
     conn.commit()
     conn.close()
 
-def get_list(driver, keyword, current_zip_code, db_name, table_name, current_time, prefix):
+def get_list(driver, keyword, current_zip_code, db_name, table_name, current_time, prefix, store_count, item_count):
     scraped_stores = []
     search_url = f"https://www.instacart.com/store/s?k={keyword}&current_zip_code={current_zip_code}"
 
     driver.get(search_url)
     driver.execute_script("document.body.style.zoom='50%'")
-    scroll_to_bottom_multiple_times(driver, 2, 10)
-    time.sleep(5)
+    scroll_to_bottom_multiple_times(driver, 2, 30)
+    time.sleep(2)
     stores = driver.find_elements(By.CLASS_NAME, "e-14qbqkc")
     
     for store in stores:
@@ -93,7 +93,7 @@ def get_list(driver, keyword, current_zip_code, db_name, table_name, current_tim
             scraped_stores.append({"url": f"{base_url}{link}", "title": store_title})
         except:
             print("Error")
-    products = get_products(driver, scraped_stores, keyword, current_zip_code, db_name, table_name, current_time, prefix)
+    products = get_products(driver, scraped_stores, keyword, current_zip_code, db_name, table_name, current_time, prefix, store_count, item_count)
     return products
 
 def scroll_to_bottom_multiple_times(driver, scroll_pause_time=2, max_scrolls=10):
@@ -112,22 +112,22 @@ def scroll_to_bottom_multiple_times(driver, scroll_pause_time=2, max_scrolls=10)
         last_height = new_height
         scroll_count += 1
 
-def get_products(driver, stores, keyword, current_zip_code, db_name, table_name, current_time, prefix):
+def get_products(driver, stores, keyword, current_zip_code, db_name, table_name, current_time, prefix, store_count, item_count):
     section_id = 1
     products = []
     store_num = 0
     for store in stores:
-        if(store_num >= 10):
+        if(store_num >= store_count):
             break
         driver.get(store["url"])
         # driver.execute_script("document.body.style.zoom='25%'")
         scroll_to_bottom_multiple_times(driver, 2, 80)
-        time.sleep(5)
+        time.sleep(2)
         elements = driver.find_elements(By.XPATH, "//div[@aria-label='Product']")
         num = 0
         
         for element in elements:
-            if(num >= 5):
+            if(num >= item_count):
                 break
 
             image_url = ""
@@ -281,7 +281,7 @@ def get_products_by_table(table_name):
         offset = (page - 1) * per_page  # Calculate the offset for pagination
         
         cursor.execute(f"""
-            SELECT store, product_name, price, image_file_name, product_item_page_link 
+            SELECT * 
             FROM {table_name}
             WHERE price IS NOT NULL AND price != ''
             ORDER BY CAST(REPLACE(REPLACE(price, '$', ''), ',', '') AS FLOAT) ASC
@@ -317,10 +317,46 @@ def get_products_by_table(table_name):
 def serve_products(filename):
     return send_from_directory('products', filename)
 
+@app.route('/submit_products', methods=['POST'])
+def submit_products():
+    try:
+        data = request.get_json()
+        selected_products = data.get('products', [])
+
+        if not selected_products:
+            return jsonify({"message": "No products selected."}), 400
+
+        # Database connection
+        db_name = "product_data.db"
+        conn = sqlite3.connect(db_name)
+        cursor = conn.cursor()
+
+        insert_query = """
+        INSERT INTO items_search (store_page_link, product_item_page_link, platform, store, product_name, 
+            weight_quantity, price, image_file_name, image_link, product_rating, product_review_number, 
+            address, phone_number, latitude, longitude)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """
+
+        # Insert each product (excluding 'id')
+        for product in selected_products:
+            product_data = tuple(product[1:])  # Exclude the first element (id)
+            cursor.execute(insert_query, product_data)
+
+        conn.commit()
+        conn.close()
+
+        return jsonify({"message": "Products successfully inserted into items_search.", "products": selected_products}), 200
+
+    except Exception as e:
+        return jsonify({"message": f"Error submitting data: {str(e)}"}), 500
+
 @app.route('/get_products', methods=['GET'])
 def get_products_api():
     keyword = request.args.get("keyword", "").strip()
     current_zip_code = request.args.get("zip_code", "").strip()
+    store_count = int(request.args.get("store_count", "").strip())
+    item_count = int(request.args.get("item_count", "").strip())
 
     options = uc.ChromeOptions()
     # options.add_argument("--headless=new")  # Enable headless mode
@@ -356,7 +392,7 @@ def get_products_api():
         sheet.write(0, col_index, value, style)
     
     create_database_table(db_name, table_name)
-    records = get_list(driver=driver, keyword=keyword, current_zip_code=current_zip_code, db_name=db_name, table_name=table_name, current_time=current_time, prefix=prefix)
+    records = get_list(driver=driver, keyword=keyword, current_zip_code=current_zip_code, db_name=db_name, table_name=table_name, current_time=current_time, prefix=prefix, store_count=store_count, item_count=item_count)
         
     for row_index, row in enumerate(records):
         for col_index, value in enumerate(row):
@@ -367,6 +403,8 @@ def get_products_api():
     return jsonify({"response": True})
 
 if __name__ == "__main__":
+    db_name = "product_data.db"
+    create_database_table(db_name, "items_search")
     app.run(host="0.0.0.0",threaded=True,)
 
 

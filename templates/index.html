@@ -43,17 +43,20 @@
             <input type="text" id="gridSearch" onkeyup="filterGrid()" 
                 class="w-full px-3 py-2 border border-gray-300 rounded-lg mb-3"
                 placeholder="Search in product list...">
+
+            <button onclick="submitSelectedProducts()" class="mt-4 px-4 py-2 bg-green-600 text-white rounded-lg">Submit Selected</button>
             
             <div id="productGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                 {% if products %}
                     {% for product in products %}
                         <div class="bg-white p-4 rounded-lg shadow-lg">
-                            <a href="{{ product[4] }}" target="_blank">
-                                <img src="/{{ product[3] }}" alt="{{ product[1] }}" class="w-full h-40 object-cover rounded-md">
+                            <input type="checkbox" class="productCheckbox" data-product='{{ product | tojson | safe }}'>
+                            <a href="{{ product[2] }}" target="_blank">
+                                <img src="/{{ product[8] }}" alt="{{ product[1] }}" class="w-full h-40 object-cover rounded-md">
                             </a>
-                            <h2 class="text-lg font-semibold mt-2">{{ product[1] }}</h2>
-                            <p class="text-blue-600 font-bold mt-1">{{ product[2] }}</p>
-                            <p class="text-sm text-gray-600 mt-1">Store: {{ product[0] }}</p>
+                            <h2 class="text-lg font-semibold mt-2">{{ product[5] }}</h2>
+                            <p class="text-blue-600 font-bold mt-1">{{ product[7] }}</p>
+                            <p class="text-sm text-gray-600 mt-1">Store: {{ product[4] }}</p>
                         </div>
                     {% endfor %}
                 {% else %}
@@ -128,7 +131,7 @@
                 return;
             }
 
-            fetch(`/get_products?keyword=${encodeURIComponent(keyword)}&zip_code=${encodeURIComponent(zip_code)}`)
+            fetch(`/get_products?keyword=${encodeURIComponent(keyword)}&zip_code=${encodeURIComponent(zip_code)}&store_count=10&item_count=5`)
             .then(response => response.json())
             .then(data => {
                 alert("Search completed");
@@ -138,6 +141,24 @@
                 loadingModal.classList.add('hidden'); // Hide loading modal when done
                 button.disabled = false;
             });
+        }
+
+        function submitSelectedProducts() {
+            let selectedProducts = [];
+            document.querySelectorAll(".productCheckbox:checked").forEach(checkbox => {
+                selectedProducts.push(JSON.parse(checkbox.dataset.product));
+            });
+            if (selectedProducts.length === 0) {
+                alert("No products selected.");
+                return;
+            }
+            fetch("/submit_products", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ products: selectedProducts })
+            }).then(response => response.json())
+              .then(data => alert("Submission successful"))
+              .catch(error => alert("Error submitting data: " + error));
         }
     </script>
 
