@@ -17,14 +17,9 @@ from selenium.webdriver.support import expected_conditions as EC
 import undetected_chromedriver as uc
 from selenium.webdriver.chrome.options import Options
 
-from flask import Flask, render_template, send_from_directory, request
+from flask import Flask, render_template, send_from_directory, request, jsonify
 
 base_url = "https://www.instacart.com"
-section_id = 1
-page = 1
-products = []
-product_links = []
-scraped_stores = []
 
 app = Flask(__name__)
 
@@ -74,11 +69,12 @@ def insert_product_record(db_name, table_name, record):
     conn.close()
 
 def get_list(driver, keyword, current_zip_code, db_name, table_name, current_time, prefix):
+    scraped_stores = []
     search_url = f"https://www.instacart.com/store/s?k={keyword}&current_zip_code={current_zip_code}"
 
     driver.get(search_url)
     driver.execute_script("document.body.style.zoom='50%'")
-    scroll_to_bottom_multiple_times(driver, 2, 80)
+    scroll_to_bottom_multiple_times(driver, 2, 10)
     time.sleep(5)
     stores = driver.find_elements(By.CLASS_NAME, "e-14qbqkc")
     
@@ -117,15 +113,22 @@ def scroll_to_bottom_multiple_times(driver, scroll_pause_time=2, max_scrolls=10)
         scroll_count += 1
 
 def get_products(driver, stores, keyword, current_zip_code, db_name, table_name, current_time, prefix):
-    global section_id
+    section_id = 1
+    products = []
+    store_num = 0
     for store in stores:
+        if(store_num >= 10):
+            break
         driver.get(store["url"])
-        driver.execute_script("document.body.style.zoom='25%'")
+        # driver.execute_script("document.body.style.zoom='25%'")
         scroll_to_bottom_multiple_times(driver, 2, 80)
         time.sleep(5)
         elements = driver.find_elements(By.XPATH, "//div[@aria-label='Product']")
+        num = 0
         
         for element in elements:
+            if(num >= 5):
+                break
 
             image_url = ""
             title = ""
@@ -228,7 +231,12 @@ def get_products(driver, stores, keyword, current_zip_code, db_name, table_name,
             products.append(record)
             print(record)
             section_id = section_id + 1
-    
+            num = num + 1
+
+        store_num = store_num + 1
+
+    driver.quit()
+
     return products
 
 @app.route('/')
@@ -356,7 +364,7 @@ def get_products_api():
 
     # Save the workbook
     workbook.save("products/"+current_time+"_"+keyword+"_"+current_zip_code+"/products.xls")
-    return ""
+    return jsonify({"response": True})
 
 if __name__ == "__main__":
     app.run(threaded=True,)

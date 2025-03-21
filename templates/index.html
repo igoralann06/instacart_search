@@ -78,6 +78,12 @@
             </div>
                 
         </div>
+
+        <div id="loadingModal" class="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-50 hidden">
+            <div class="bg-white p-6 rounded-lg shadow-lg text-center">
+                <p class="text-lg font-semibold">Searching...</p>
+            </div>
+        </div>
         
     </div>
 
@@ -107,19 +113,31 @@
 
         function fetchProducts() {
             const button = document.getElementById('searchButton');
+            const loadingModal = document.getElementById('loadingModal');
+            
             button.disabled = true;
+            loadingModal.classList.remove('hidden'); // Show loading modal
+            
             let keyword = document.getElementById("keyword").value.trim();
             let zip_code = document.getElementById("zip_code").value.trim();
 
             if (!keyword || !zip_code) {
                 alert("Please enter both keyword and zip code.");
+                loadingModal.classList.add('hidden'); // Hide modal on validation error
+                button.disabled = false;
                 return;
             }
 
             fetch(`/get_products?keyword=${encodeURIComponent(keyword)}&zip_code=${encodeURIComponent(zip_code)}`)
             .then(response => response.json())
             .then(data => {
+                alert("Search completed");
+                document.location.reload();
             })
+            .finally(() => {
+                loadingModal.classList.add('hidden'); // Hide loading modal when done
+                button.disabled = false;
+            });
         }
     </script>
 
